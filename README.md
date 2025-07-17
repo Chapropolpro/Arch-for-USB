@@ -1,2 +1,3 @@
 # Arch-for-USB
-Make arch work better on usb stick
+[EN] Script that optimizes Arch for usb stick  
+[RU] Скрипт оптимизируйщий Arch на флешке
