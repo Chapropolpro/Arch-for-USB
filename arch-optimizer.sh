@@ -14,10 +14,12 @@ pacman -S --needed --noconfirm util-linux macchanger
 
 echo "[3/8] Настройка systemd journal: только в RAM"
 mkdir -p /etc/systemd/journald.conf.d
-cat <<EOF > /etc/systemd/journald.conf.d/volatile.conf
+cat <<EOF > /etc/systemd/journald.conf.d/99-no-presistent.conf > /dev/null
 [Journal]
 Storage=volatile
+SyncIntervalSec=10min
 EOF
+sudo systemctl restart systemd-journald
 
 echo "[4/8] Настройка ZRAM"
 # systemd unit
@@ -68,10 +70,10 @@ if grep -q 'relatime' /etc/fstab; then
   sed -i 's/\<relatime\>/noatime,nodiratime,discard/g' /etc/fstab
 fi
 
-echo "[7/8] Установка задержки сброса кэша на диск до 60 сек"
+echo "[7/8] Установка задержки сброса кэша на диск до 10 мин"
 cat <<EOF > /etc/sysctl.d/98-zram-cache.conf
-vm.dirty_writeback_centisecs = 6000
-vm.dirty_expire_centisecs = 6000
+vm.dirty_writeback_centisecs = 60000
+vm.dirty_expire_centisecs = 60000
 vm.dirty_ratio = 40
 vm.dirty_background_ratio = 10
 EOF
