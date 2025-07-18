@@ -10,7 +10,7 @@ echo "[1/8] Обновление системы"
 pacman -Syu --noconfirm
 
 echo "[2/8] Установка необходимых пакетов"
-pacman -S --needed --noconfirm util-linux macchanger
+pacman -S --needed --noconfirm util-linux macchanger zram-generator
 
 echo "[3/8] Настройка systemd journal: только в RAM"
 mkdir -p /etc/systemd/journald.conf.d
@@ -22,39 +22,15 @@ EOF
 sudo systemctl restart systemd-journald
 
 echo "[4/8] Настройка ZRAM"
-# systemd unit
-cat <<'EOF' > /etc/systemd/system/zram-swap.service
-[Unit]
-Description=ZRAM Swap
-After=multi-user.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=true
-ExecStart=/usr/local/bin/setup-zram.sh
-ExecStop=/usr/bin/swapoff /dev/zram0
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Скрипт инициализации
-cat <<'EOF' > /usr/local/bin/setup-zram.sh
-#!/bin/bash
-modprobe zram || exit 0
-echo zstd > /sys/block/zram0/comp_algorithm
-mem_total_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-echo $((mem_total_kb * 1024 / 2)) > /sys/block/zram0/disksize
-mkswap /dev/zram0
-swapon /dev/zram0
-EOF
-
-chmod +x /usr/local/bin/setup-zram.sh
-
-# Активируем unit
-systemctl daemon-reexec
+cat > /etc/systemd/zram-generator.conf << 'EOL'
+[zram0]
+zram-size = ram
+compression-algorithm = zstd
+swap-priority = 100
+fs-type = swap
+EOL
 systemctl daemon-reload
-systemctl enable --now zram-swap.service
+systemctl start /dev/zram0
 
 echo "[5/8] Настройка tmpfs для /tmp, /var/tmp, /var/log"
 grep -q '/tmp tmpfs' /etc/fstab || cat <<EOF >> /etc/fstab
